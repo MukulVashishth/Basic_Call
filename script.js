@@ -1,13 +1,14 @@
-let APP_ID = "a6990b27a44c4cb3ad23b6386cea3e39";
+let APP_ID = "YOU-APP-ID"
+
 
 let token = null;
-let uid = String(Math.floor(Math.random() * 10000));
+let uid = String(Math.floor(Math.random() * 10000))
 
 let client;
 let channel;
 
 let queryString = window.location.search
-let urlParams = new URLSearchParams(queryString);
+let urlParams = new URLSearchParams(queryString)
 let roomId = urlParams.get('room')
 
 if(!roomId){
@@ -19,30 +20,42 @@ let remoteStream;
 let peerConnection;
 
 const servers = {
-    iceServers: [
+    iceServers:[
         {
             urls:['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302']
         }
     ]
 }
 
+
+let constraints = {
+    video:{
+        width:{min:640, ideal:1920, max:1920},
+        height:{min:480, ideal:1080, max:1080},
+    },
+    audio:true
+}
+
 let init = async () => {
     client = await AgoraRTM.createInstance(APP_ID)
     await client.login({uid, token})
 
-    channel = client.createChannel(roomId);
+    channel = client.createChannel(roomId)
     await channel.join()
 
     channel.on('MemberJoined', handleUserJoined)
-    channel.on('Member Left', handleUserLeft)
+    channel.on('MemberLeft', handleUserLeft)
+
     client.on('MessageFromPeer', handleMessageFromPeer)
 
-    localStream = await navigator.mediaDevices.getUserMedia({video:true, audio:true})
+    localStream = await navigator.mediaDevices.getUserMedia(constraints)
     document.getElementById('user-1').srcObject = localStream
 }
+ 
 
 let handleUserLeft = (MemberId) => {
     document.getElementById('user-2').style.display = 'none'
+    document.getElementById('user-1').classList.remove('smallFrame')
 }
 
 let handleMessageFromPeer = async (message, MemberId) => {
@@ -62,6 +75,8 @@ let handleMessageFromPeer = async (message, MemberId) => {
             peerConnection.addIceCandidate(message.candidate)
         }
     }
+
+
 }
 
 let handleUserJoined = async (MemberId) => {
@@ -69,12 +84,16 @@ let handleUserJoined = async (MemberId) => {
     createOffer(MemberId)
 }
 
-let createPeerConnection = async(MemberId) => {
+
+let createPeerConnection = async (MemberId) => {
     peerConnection = new RTCPeerConnection(servers)
 
     remoteStream = new MediaStream()
     document.getElementById('user-2').srcObject = remoteStream
-    document.getElementById('user-2').style.display ='block'
+    document.getElementById('user-2').style.display = 'block'
+
+    document.getElementById('user-1').classList.add('smallFrame')
+
 
     if(!localStream){
         localStream = await navigator.mediaDevices.getUserMedia({video:true, audio:false})
@@ -91,7 +110,6 @@ let createPeerConnection = async(MemberId) => {
         })
     }
 
-    //Setting up ICE Candidates
     peerConnection.onicecandidate = async (event) => {
         if(event.candidate){
             client.sendMessageToPeer({text:JSON.stringify({'type':'candidate', 'candidate':event.candidate})}, MemberId)
@@ -108,6 +126,7 @@ let createOffer = async (MemberId) => {
     client.sendMessageToPeer({text:JSON.stringify({'type':'offer', 'offer':offer})}, MemberId)
 }
 
+
 let createAnswer = async (MemberId, offer) => {
     await createPeerConnection(MemberId)
 
@@ -119,14 +138,16 @@ let createAnswer = async (MemberId, offer) => {
     client.sendMessageToPeer({text:JSON.stringify({'type':'answer', 'answer':answer})}, MemberId)
 }
 
+
 let addAnswer = async (answer) => {
     if(!peerConnection.currentRemoteDescription){
         peerConnection.setRemoteDescription(answer)
     }
 }
 
+
 let leaveChannel = async () => {
-    await channel.leave();
+    await channel.leave()
     await client.logout()
 }
 
@@ -138,7 +159,7 @@ let toggleCamera = async () => {
         document.getElementById('camera-btn').style.backgroundColor = 'rgb(255, 80, 80)'
     }else{
         videoTrack.enabled = true
-        document.getElementById('camera-btn').style.backgroundColor = 'rgba(16, 36, 22, 0.9)'
+        document.getElementById('camera-btn').style.backgroundColor = 'rgb(179, 102, 249, .9)'
     }
 }
 
@@ -150,12 +171,13 @@ let toggleMic = async () => {
         document.getElementById('mic-btn').style.backgroundColor = 'rgb(255, 80, 80)'
     }else{
         audioTrack.enabled = true
-        document.getElementById('mic-btn').style.backgroundColor = 'rgba(16, 36, 22, 0.9)'
+        document.getElementById('mic-btn').style.backgroundColor = 'rgb(179, 102, 249, .9)'
     }
 }
+  
+window.addEventListener('beforeunload', leaveChannel)
 
 document.getElementById('camera-btn').addEventListener('click', toggleCamera)
 document.getElementById('mic-btn').addEventListener('click', toggleMic)
-window.addEventListener('beforeunload', leaveChannel);
 
-init();
+init()
